@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEDALMAP — Every Bike in Brooklyn</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0e17;--surface:#131a2b;--accent:#00e5a0;--accent2:#00b8ff;
+    --text:#e8edf5;--muted:#5a6a8a;--card:#1a2340;--radius:14px;
+  }
+  @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @keyframes ripple{0%{transform:scale(.7);opacity:.8}100%{transform:scale(2.5);opacity:0}}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);
+    min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+  .screen{flex:1;padding:24px 20px 100px;display:none;animation:fadeIn .3s ease}
+  .screen.active{display:block}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+  /* HERO */
+  .hero-logo{font-size:42px;font-weight:900;letter-spacing:-2px;margin:32px 0 4px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;
+    -webkit-text-fill-color:transparent}
+  .hero-sub{color:var(--muted);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin-bottom:36px}
+  .hero-pitch{font-size:22px;font-weight:700;line-height:1.35;max-width:340px;margin-bottom:32px}
+  .hero-pitch span{color:var(--accent)}
+
+  /* MAP MOCK */
+  .map-mock{position:relative;width:100%;height:280px;border-radius:var(--radius);overflow:hidden;
+    background:linear-gradient(145deg,#0f1a2e,#162040);border:1px solid #1e2d50;margin-bottom:28px}
+  .map-grid{position:absolute;inset:0;
+    background-image:linear-gradient(#1a2a4a .5px,transparent .5px),linear-gradient(90deg,#1a2a4a .5px,transparent .5px);
+    background-size:32px 32px;opacity:.4}
+  .map-label{position:absolute;bottom:12px;left:14px;font-size:11px;color:var(--muted);
+    letter-spacing:1px;text-transform:uppercase}
+  .bike-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);
+    animation:pulse 2.2s ease-in-out infinite}
+  .bike-dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;
+    border:2px solid var(--accent);animation:ripple 2.2s ease-out infinite}
+  .bike-dot.blue{background:var(--accent2)}
+  .bike-dot.blue::after{border-color:var(--accent2)}
+
+  /* SEARCH */
+  .search-bar{display:flex;gap:10px;margin-bottom:20px}
+  .search-bar input{flex:1;padding:14px 18px;border-radius:50px;border:1px solid #1e2d50;
+    background:var(--surface);color:var(--text);font-size:15px;outline:none;
+    transition:border-color .2s}
+  .search-bar input:focus{border-color:var(--accent)}
+  .search-bar button{padding:14px 22px;border-radius:50px;border:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--bg);
+    font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+
+  /* STAT CARDS */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stat{background:var(--card);border-radius:var(--radius);padding:18px;text-align:center}
+  .stat-num{font-size:28px;font-weight:800;color:var(--accent)}
+  .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+  /* RESULT TOAST */
+  .result-toast{margin-top:20px;padding:16px;border-radius:var(--radius);background:var(--card);
+    border-left:3px solid var(--accent);display:none;font-size:14px;line-height:1.5}
+  .result-toast.show{display:block;animation:fadeIn .3s ease}
+  .result-toast strong{color:var(--accent)}
+
+  /* FLOW MAP */
+  .flow-title{font-size:28px;font-weight:800;margin:28px 0 8px}
+  .flow-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+  .flow-grid{display:flex;flex-direction:column;gap:14px}
+  .flow-box{display:block;padding:22px;background:var(--card);border-radius:var(--radius);
+    text-decoration:none;color:var(--text);border:1px solid #1e2d50;transition:border-color .2s,transform .15s}
+  .flow-box:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .flow-box .flow-num{font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px}
+  .flow-box .flow-name{font-size:17px;font-weight:700}
+  .flow-arrow{text-align:center;color:var(--muted);font-size:18px;margin:-4px 0}
+
+  /* PLACEHOLDER SCREENS */
+  .placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:60vh;text-align:center}
+  .placeholder-icon{font-size:48px;margin-bottom:16px;animation:float 3s ease-in-out infinite}
+  .placeholder h2{font-size:26px;font-weight:800;margin-bottom:10px}
+  .placeholder p{color:var(--muted);font-size:14px;max-width:260px}
+
+  /* BOTTOM NAV */
+  .bottom-nav{position:fixed;bottom:0;left:0;right:0;display:flex;
+    background:var(--surface);border-top:1px solid #1e2d50;padding:8px 4px 20px;gap:2px;z-index:100}
+  .bottom-nav button{flex:1;background:none;border:none;color:var(--muted);font-size:10px;
+    letter-spacing:.5px;padding:8px 0;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;gap:4px;transition:color .2s}
+  .bottom-nav button.active{color:var(--accent)}
+  .bottom-nav button .nav-icon{font-size:20px}
+</style>
+</head>
+<body>
+
+<!-- HERO SCREEN -->
+<div class="screen" id="screen-home">
+  <div class="hero-logo">PEDALMAP</div>
+  <div class="hero-sub">Brooklyn Bike Radar</div>
+  <div class="hero-pitch">Every bike, dock, and lane in Brooklyn — <span>live on one map.</span></div>
+
+  <div class="map-mock" id="mapMock">
+    <div class="map-grid"></div>
+    <div class="bike-dot" style="top:22%;left:18%"></div>
+    <div class="bike-dot blue" style="top:38%;left:62%"></div>
+    <div class="bike-dot" style="top:55%;left:35%"></div>
+    <div class="bike-dot blue" style="top:30%;left:80%"></div>
+    <div class="bike-dot" style="top:70%;left:55%"></div>
+    <div class="bike-dot blue" style="top:48%;left:22%"></div>
+    <div class="bike-dot" style="top:65%;left:78%"></div>
+    <div class="bike-dot" style="top:15%;left:45%"></div>
+    <div class="bike-dot blue" style="top:80%;left:40%"></div>
+    <div class="map-label">Williamsburg — Bushwick — DUMBO</div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="hoodInput" placeholder="Enter a neighborhood…" />
+    <button id="scanBtn">SCAN</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-num" id="bikeCount">2,847</div><div class="stat-label">Bikes Live</div></div>
+    <div class="stat"><div class="stat-num" id="dockCount">412</div><div class="stat-label">Docks</div></div>
+  </div>
+
+  <div class="result-toast" id="resultToast"></div>
+</div>
+
+<!-- FLOW MAP -->
+<div class="screen" id="screen-flow">
+  <div class="flow-title">App Flow</div>
+  <div class="flow-sub">The five screens of PedalMap</div>
+  <div class="flow-grid">
+    <a class="flow-box" href="#/">
+      <div class="flow-num">01 — Home</div>
+      <div class="flow-name">Live Map + Search</div>
+    </a>
+    <div class="flow-arrow">↓</div>
+    <a class="flow-box" href="#/s/2">
+      <div class="flow-num">02 — Dock Detail</div>
+      <div class="flow-name">Station Info & Availability</div>
+    </a>
+    <div class="flow-arrow">↓</div>
+    <a class="flow-box" href="#/s/3">
+      <div class="flow-num">03 — Ride Planner</div>
+      <div class="flow-name">Route Builder & ETA</div>
+    </a>
+    <div class="flow-arrow">↓</div>
+    <a class="flow-box" href="#/s/4">
+      <div class="flow-num">04 — My Rides</div>
+      <div class="flow-name">History & Saved Stations</div>
+    </a>
+    <div class="flow-arrow">↓</div>
+    <a class="flow-box" href="#/flow">
+      <div class="flow-num">05 — Flow Map</div>
+      <div class="flow-name">You Are Here</div>
+    </a>
+  </div>
+</div>
+
+<!-- PLACEHOLDER: DOCK DETAIL -->
+<div class="screen" id="screen-s2">
+  <div class="placeholder">
+    <div class="placeholder-icon">🔒</div>
+    <h2>Dock Detail</h2>
+    <p>Tap any station pin to see real-time bike counts, e-bike availability, and walk time.</p>
+  </div>
+</div>
+
+<!-- PLACEHOLDER: RIDE PLANNER -->
+<div class="screen" id="screen-s3">
+  <div class="placeholder">
+    <div class="placeholder-icon">🗺</div>
+    <h2>Ride Planner</h2>
+    <p>Pick up here, drop off there. Protected lanes highlighted, ETA calculated live.</p>
+  </div>
+</div>
+
+<!-- PLACEHOLDER: MY RIDES -->
+<div class="screen" id="screen-s4">
+  <div class="placeholder">
+    <div class="placeholder-icon">⏱</div>
+    <h2>My Rides</h2>
+    <p>Every trip logged. Favorite docks pinned. Weekly streak and calorie stats at a glance.</p>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button data-screen="home"><span class="nav-icon">◉</span>Map</button>
+  <button data-screen="flow"><span class="nav-icon">▦</span>Flow</button>
+  <button data-screen="s2"><span class="nav-icon">⊡</span>Docks</button>
+  <button data-screen="s3"><span class="nav-icon">⟿</span>Ride</button>
+  <button data-screen="s4"><span class="nav-icon">⏐</span>Me</button>
+</nav>
+
+<script>
+(function(){
+  var routes={"#/":"home","#/flow":"flow","#/s/2":"s2","#/s/3":"s3","#/s/4":"s4"};
+  var screenMap={"home":"#/","flow":"#/flow","s2":"#/s/2","s3":"#/s/3","s4":"#/s/4"};
+
+  function go(){
+    var h=location.hash||"#/";
+    var id=routes[h]||"home";
+    document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active")});
+    var el=document.getElementById("screen-"+id);
+    if(el)el.classList.add("active");
+    document.querySelectorAll(".bottom-nav button").forEach(function(b){
+      b.classList.toggle("active",b.getAttribute("data-screen")===id);
+    });
+  }
+
+  window.addEventListener("hashchange",go);
+  document.querySelectorAll(".bottom-nav button").forEach(function(b){
+    b.addEventListener("click",function(){
+      location.hash=screenMap[b.getAttribute("data-screen")]||"#/";
+    });
+  });
+
+  // SCAN interaction
+  var hoods={"williamsburg":[342,58],"bushwick":[287,41],"dumbo":[198,32],
+    "park slope":[415,67],"bed-stuy":[263,39],"greenpoint":[189,28],
+    "prospect heights":[174,25],"crown heights":[221,34],"cobble hill":[112,19]};
+
+  document.getElementById("scanBtn").addEventListener("click",function(){
+    var v=document.getElementById("hoodInput").value.trim().toLowerCase();
+    var toast=document.getElementById("resultToast");
+    if(hoods[v]){
+      toast.innerHTML="<strong>"+v.charAt(0).toUpperCase()+v.slice(1)+"</strong> — "+
+        hoods[v][0]+" bikes across "+hoods[v][1]+" docks right now.";
+      toast.classList.add("show");
+    }else if(v){
+      toast.innerHTML="Scanning <strong>"+v.charAt(0).toUpperCase()+v.slice(1)+
+        "</strong>… neighborhood not yet indexed. Try Williamsburg, DUMBO, or Bushwick.";
+      toast.classList.add("show");
+    }else{
+      toast.innerHTML="Type a Brooklyn neighborhood to scan.";
+      toast.classList.add("show");
+    }
+  });
+
+  document.getElementById("hoodInput").addEventListener("keydown",function(e){
+    if(e.key==="Enter")document.getElementById("scanBtn").click();
+  });
+
+  go();
+})();
+</script>
+</body>
+</html>
